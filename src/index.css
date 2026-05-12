@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smart Agriculture Design System
+   Deep blue + light green. All colors HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 150 60% 96%;
+    --foreground: 218 65% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 65% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 65% 14%;
+
+    /* Deep blue (matches sprout logo background) */
+    --primary: 218 75% 32%;
+    --primary-foreground: 150 60% 96%;
+    --primary-glow: 218 80% 48%;
+
+    /* Light green accent */
+    --secondary: 140 55% 88%;
+    --secondary-foreground: 218 65% 14%;
+
+    --muted: 150 30% 94%;
+    --muted-foreground: 218 20% 40%;
+
+    --accent: 142 60% 55%;
+    --accent-foreground: 218 65% 14%;
+
+    --success: 142 65% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 0 78% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 218 25% 88%;
+    --input: 218 25% 90%;
+    --ring: 218 75% 32%;
+
+    --radius: 1rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(218 75% 32%), hsl(218 80% 48%));
+    --gradient-soft: linear-gradient(180deg, hsl(150 60% 96%), hsl(140 55% 92%));
+    --gradient-hero: radial-gradient(ellipse at top, hsl(140 55% 88% / 0.6), transparent 60%),
+                     linear-gradient(135deg, hsl(150 60% 96%), hsl(140 50% 90%));
+
+    --shadow-soft: 0 4px 16px -4px hsl(218 75% 32% / 0.08);
+    --shadow-card: 0 8px 30px -10px hsl(218 75% 32% / 0.15);
+    --shadow-elevated: 0 20px 50px -20px hsl(218 75% 32% / 0.25);
+    --shadow-glow: 0 0 40px hsl(142 60% 55% / 0.35);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 218 50% 8%;
+    --foreground: 150 60% 96%;
+    --card: 218 45% 12%;
+    --card-foreground: 150 60% 96%;
+    --popover: 218 45% 12%;
+    --popover-foreground: 150 60% 96%;
+    --primary: 218 80% 55%;
+    --primary-foreground: 218 50% 8%;
+    --secondary: 218 35% 18%;
+    --secondary-foreground: 150 60% 96%;
+    --muted: 218 35% 16%;
+    --muted-foreground: 150 20% 70%;
+    --accent: 142 60% 55%;
+    --accent-foreground: 218 50% 8%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 35% 20%;
+    --input: 218 35% 20%;
+    --ring: 218 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv02";
+  }
+}
+
+@layer utilities {
+  .bg-gradient-primary { background: var(--gradient-primary); }
+  .bg-gradient-soft { background: var(--gradient-soft); }
+  .bg-gradient-hero { background: var(--gradient-hero); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .transition-smooth { transition: var(--transition-smooth); }
+}
