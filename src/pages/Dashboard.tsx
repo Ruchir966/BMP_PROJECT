@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, Gauge, LogOut, MapPin, RefreshCw, Zap, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 type Metric = {
   key: "current" | "voltage" | "power";
@@ -41,7 +42,9 @@ const METRICS: Metric[] = [
     description: "Real-time energy consumption",
   },
 ];
+
 const initialReadings = { current: 0, voltage: 0, power: 0 };
+
 const formatInitials = (name: string) =>
   name
     .split(" ")
@@ -71,16 +74,21 @@ const MetricCard = ({
             <Icon className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="font-display text-lg font-bold text-foreground">{metric.label}</h3>
-            <p className="text-xs text-muted-foreground">{metric.description}</p>
+            <h3 className="font-display text-lg font-bold text-foreground">
+              {metric.label}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {metric.description}
+            </p>
           </div>
         </div>
+
         <span
           className={cn(
             "rounded-full px-3 py-1 text-xs font-semibold",
             isLow
               ? "bg-destructive/10 text-destructive"
-              : "bg-success/15 text-success",
+              : "bg-success/15 text-success"
           )}
         >
           {status}
@@ -92,18 +100,23 @@ const MetricCard = ({
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             My Reading
           </p>
+
           <p
             className={cn(
               "mt-1 font-display text-4xl font-extrabold tabular-nums tracking-tight transition-smooth",
-              isLow ? "text-destructive" : "text-success",
+              isLow ? "text-destructive" : "text-success"
             )}
           >
             {reading.toFixed(2)}
-            <span className="ml-1 text-base font-semibold opacity-80">{metric.unit}</span>
+            <span className="ml-1 text-base font-semibold opacity-80">
+              {metric.unit}
+            </span>
           </p>
+
           <p className="mt-1 text-xs text-muted-foreground">
             {diff >= 0 ? "+" : ""}
-            {diff.toFixed(2)} {metric.unit} ({diffPct >= 0 ? "+" : ""}
+            {diff.toFixed(2)} {metric.unit} (
+            {diffPct >= 0 ? "+" : ""}
             {diffPct.toFixed(1)}%) vs average
           </p>
         </div>
@@ -112,9 +125,12 @@ const MetricCard = ({
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             System Average
           </p>
+
           <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
             {metric.systemAverage.toFixed(2)}
-            <span className="ml-1 text-sm font-semibold text-muted-foreground">{metric.unit}</span>
+            <span className="ml-1 text-sm font-semibold text-muted-foreground">
+              {metric.unit}
+            </span>
           </p>
         </div>
       </div>
@@ -124,18 +140,37 @@ const MetricCard = ({
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+
+  const navigate = useNavigate();
+
   const [readings, setReadings] = useState(initialReadings);
-  const [averages, setAverages] = useState({ current: 1.45, voltage: 12.6, power: 18.3 });
- useEffect(() => {
+
+  const [averages, setAverages] = useState({
+    current: 1.45,
+    voltage: 12.6,
+    power: 18.3,
+  });
+
+  // ADMIN REDIRECT
+  useEffect(() => {
+    if (
+      user?.username === "admin" ||
+      user?.email === "admin@agrisystem.com"
+    ) {
+      navigate("/admin");
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     if (!user) return;
 
-    // 1. Fetch the Live Reading for THIS user
+    // Fetch Live Reading
     const fetchRealData = async () => {
-      const { data, error } = await supabase
-        .from('BMP')
-        .select('current, voltage, power')
-        .eq('device_uid', user.id)
-        .order('id', { ascending: false })
+      const { data } = await supabase
+        .from("BMP")
+        .select("current, voltage, power")
+        .eq("device_uid", user.id)
+        .order("id", { ascending: false })
         .limit(1)
         .single();
 
@@ -148,16 +183,15 @@ const Dashboard = () => {
       }
     };
 
-    // 2. Fetch ALL data and calculate the System Average
+    // Fetch System Averages
     const fetchSystemAverages = async () => {
-      const { data, error } = await supabase
-        .from('BMP')
-        .select('current, voltage, power')
-        .order('id', { ascending: false })
-        .limit(500); // Grabs the last 500 readings across ALL users
+      const { data } = await supabase
+        .from("BMP")
+        .select("current, voltage, power")
+        .order("id", { ascending: false })
+        .limit(500);
 
       if (data && data.length > 0) {
-        // Add up all the numbers
         const sum = data.reduce(
           (acc, row) => ({
             current: acc.current + (row.current || 0),
@@ -167,7 +201,6 @@ const Dashboard = () => {
           { current: 0, voltage: 0, power: 0 }
         );
 
-        // Divide by the number of rows to get the average!
         setAverages({
           current: sum.current / data.length,
           voltage: sum.voltage / data.length,
@@ -176,27 +209,38 @@ const Dashboard = () => {
       }
     };
 
-    // Run both fetches immediately when the dashboard loads
     fetchRealData();
     fetchSystemAverages();
 
-    // Refresh the live reading every 5 seconds, and the averages every 15 seconds
     const readingInterval = setInterval(fetchRealData, 5000);
     const averageInterval = setInterval(fetchSystemAverages, 15000);
-    
+
     return () => {
       clearInterval(readingInterval);
       clearInterval(averageInterval);
     };
   }, [user]);
-  const initials = useMemo(() => formatInitials(user?.farmerName ?? ""), [user?.farmerName]);
+
+  const initials = useMemo(
+    () => formatInitials(user?.farmerName ?? ""),
+    [user?.farmerName]
+  );
 
   if (!user) return null;
 
- const cards: { metric: Metric; reading: number }[] = [
-    { metric: { ...METRICS[0], systemAverage: averages.current }, reading: readings.current },
-    { metric: { ...METRICS[1], systemAverage: averages.voltage }, reading: readings.voltage },
-    { metric: { ...METRICS[2], systemAverage: averages.power }, reading: readings.power },
+  const cards: { metric: Metric; reading: number }[] = [
+    {
+      metric: { ...METRICS[0], systemAverage: averages.current },
+      reading: readings.current,
+    },
+    {
+      metric: { ...METRICS[1], systemAverage: averages.voltage },
+      reading: readings.voltage,
+    },
+    {
+      metric: { ...METRICS[2], systemAverage: averages.power },
+      reading: readings.power,
+    },
   ];
 
   return (
@@ -206,10 +250,12 @@ const Dashboard = () => {
         <div className="container flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Logo size={36} withWordmark={false} />
+
             <div className="hidden sm:block">
               <h1 className="font-display text-lg font-bold leading-tight text-foreground">
                 Smart Agri System
               </h1>
+
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 Field Telemetry
               </p>
@@ -217,18 +263,25 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 rounded-full border border-border/60 bg-card px-2 py-1 pr-4 shadow-soft">
+            {/* <div className="flex items-center gap-3 rounded-full border border-border/60 bg-card px-2 py-1 pr-4 shadow-soft">
               <span
                 aria-hidden
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary font-display text-sm font-bold text-primary-foreground"
               >
                 {initials}
               </span>
+
               <div className="hidden text-left leading-tight sm:block">
-                <p className="text-sm font-semibold text-foreground">{user.farmerName}</p>
-                <p className="text-[11px] text-muted-foreground">@{user.username}</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {user.farmerName}
+                </p>
+
+                <p className="text-[11px] text-muted-foreground">
+                  @{user.username}
+                </p>
               </div>
-            </div>
+            </div> */}
+
             <Button variant="outline" size="sm" onClick={logout}>
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Log out</span>
@@ -245,23 +298,43 @@ const Dashboard = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 Smart Agri System
               </p>
+
               <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                Hello, {(user.farmerName ? user.farmerName.split(" ")[0] : user.email ? user.email.split("@")[0] : "Farmer")} 🌱
+                Hello,{" "}
+                {user.farmerName
+                  ? user.farmerName.split(" ")[0]
+                  : user.email
+                  ? user.email.split("@")[0]
+                  : "Farmer"}{" "}
+                🌱
               </h2>
-              <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+
+              {/* <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 text-primary" />
                 {user.farmLocation}
-              </p>
+              </p> */}
+
               <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-                Each card compares your live sensor reading against the system average.
-                <span className="ml-1 font-semibold text-success">Green</span> means you're at or above
-                average,{" "}
-                <span className="font-semibold text-destructive">red</span> means below — time to check
-                in on the farm.
+                Each card compares your live sensor reading against the system
+                average.
+                <span className="ml-1 font-semibold text-success">
+                  Green
+                </span>{" "}
+                means you're at or above average,
+                <span className="font-semibold text-destructive">
+                  red
+                </span>{" "}
+                means below — time to check in on the farm.
               </p>
             </div>
-            <Button variant="accent" size="sm" onClick={() => setReadings(initialReadings())}>
-              <RefreshCw className="h-4 w-4" /> Refresh readings
+
+            <Button
+              variant="accent"
+              size="sm"
+              onClick={() => setReadings(initialReadings)}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh readings
             </Button>
           </div>
         </section>
@@ -269,7 +342,11 @@ const Dashboard = () => {
         {/* Metric cards */}
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {cards.map(({ metric, reading }) => (
-            <MetricCard key={metric.key} metric={metric} reading={reading} />
+            <MetricCard
+              key={metric.key}
+              metric={metric}
+              reading={reading}
+            />
           ))}
         </section>
 

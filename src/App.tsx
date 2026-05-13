@@ -10,6 +10,7 @@ import Login from "./pages/Login.tsx";
 import Signup from "./pages/Signup.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
   
 const queryClient = new QueryClient();
 
@@ -32,8 +33,17 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
+
           </Routes>
         </AuthProvider>
       </BrowserRouter>

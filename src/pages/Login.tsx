@@ -64,12 +64,12 @@ const Login = () => {
           {submitting ? <Loader2 className="animate-spin" /> : <LogIn />}
           {submitting ? "Signing in…" : "Login"}
         </Button>
-        <p className="text-center text-sm text-muted-foreground">
+        {/* <p className="text-center text-sm text-muted-foreground">
           New to Smart Agri?{" "}
           <Link to="/signup" className="font-semibold text-primary hover:underline">
             Register your farm
           </Link>
-        </p>
+        </p> */}
       </form>
     </AuthLayout>
   );
