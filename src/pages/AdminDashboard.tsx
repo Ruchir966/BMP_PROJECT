@@ -25,11 +25,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Shape of the real data coming from your Supabase BMP table
 type AdminReading = {
+  id: number;
   username: string;
   current: number;
   voltage: number;
   power: number;
-  gps: string;
+  date: string;
+  time: string;
 };
 
 const formatInitials = (name: string) =>
@@ -77,44 +79,49 @@ const AdminDashboard = () => {
   const { user, logout } = useAuth();
   
   // Real state for Supabase data
-  const [activeUsers, setActiveUsers] = useState<AdminReading[]>([]);
+  const [tableData, setTableData] = useState<AdminReading[]>([]);
   const [systemAverages, setSystemAverages] = useState({ current: 0, voltage: 0, power: 0 });
   const [loading, setLoading] = useState(false);
 
   const fetchGlobalData = async () => {
     setLoading(true);
-    const today = new Date();
-    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // 1. Fetch the last 7 days of real data
+    // 1. Fetch all relevant data, ordering by newest ID first
     const { data, error } = await supabase
       .from('BMP')
-      .select('username, current, voltage, power, gps, created_at')
-      .gte('created_at', sevenDaysAgo.toISOString())
-      .order('created_at', { ascending: false });
+      .select('id, username, current, voltage, power, date, time')
+      .order('id', { ascending: false });
 
     if (data && data.length > 0) {
-      // 2. Calculate Real System Averages
-      const avgCurrent = data.reduce((sum, d) => sum + (d.current || 0), 0) / data.length;
-      const avgVoltage = data.reduce((sum, d) => sum + (d.voltage || 0), 0) / data.length;
-      const avgPower = data.reduce((sum, d) => sum + (d.power || 0), 0) / data.length;
-      
-      setSystemAverages({ current: avgCurrent, voltage: avgVoltage, power: avgPower });
+      // 2. Calculate the exact Date for 7 days ago
+      const today = new Date();
+      const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      sevenDaysAgo.setHours(0, 0, 0, 0); // Start at midnight
 
-      // 3. Extract the LATEST reading for each unique user
-      // Since data is ordered by created_at descending, the first time we see a username, it's their newest reading
-      const uniqueUsersData = data.reduce((acc, current) => {
-        if (!acc.find((item: any) => item.username === current.username)) {
-          acc.push(current);
-        }
-        return acc;
-      }, []);
+      // 3. Filter using the text 'date' column in memory
+      const recentData = data.filter((row) => {
+        if (!row.date) return false;
+        const rowDate = new Date(row.date); 
+        return rowDate >= sevenDaysAgo;
+      });
 
-      // Filter out admin rows so they don't show in the active farmers table
-      const activeFarmersOnly = uniqueUsersData.filter((u: any) => !u.username.toLowerCase().startsWith("admin"));
-      setActiveUsers(activeFarmersOnly);
+      if (recentData.length > 0) {
+        // Calculate averages only from the filtered 7-day data
+        const avgCurrent = recentData.reduce((sum, d) => sum + (d.current || 0), 0) / recentData.length;
+        const avgVoltage = recentData.reduce((sum, d) => sum + (d.voltage || 0), 0) / recentData.length;
+        const avgPower = recentData.reduce((sum, d) => sum + (d.power || 0), 0) / recentData.length;
+        
+        setSystemAverages({ current: avgCurrent, voltage: avgVoltage, power: avgPower });
+
+        // Filter out admin rows
+        const allFarmersData = recentData.filter((u: any) => !u.username.toLowerCase().startsWith("admin"));
+        setTableData(allFarmersData);
+      } else {
+        setTableData([]);
+        setSystemAverages({ current: 0, voltage: 0, power: 0 });
+      }
     } else {
-      setActiveUsers([]);
+      setTableData([]);
       setSystemAverages({ current: 0, voltage: 0, power: 0 });
     }
     setLoading(false);
@@ -122,12 +129,14 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchGlobalData();
-    // Auto-refresh every 8 seconds exactly like your UI implies
     const id = setInterval(fetchGlobalData, 8000);
     return () => clearInterval(id);
   }, []);
 
   const initials = useMemo(() => formatInitials(user?.farmerName ?? "Admin"), [user?.farmerName]);
+  
+  // Calculate how many unique users are in the table for the header
+  const uniqueUsersCount = new Set(tableData.map(d => d.username)).size;
 
   if (!user) return null;
 
@@ -221,7 +230,7 @@ const AdminDashboard = () => {
           </div>
         </section>
 
-        {/* Users table */}
+        {/* Historical Data Table */}
         <section className="rounded-3xl border border-border/60 bg-card shadow-card">
           <div className="flex items-center justify-between gap-4 p-6">
             <div className="flex items-center gap-3">
@@ -229,34 +238,35 @@ const AdminDashboard = () => {
                 <Users className="h-5 w-5" />
               </span>
               <div>
-                <h3 className="font-display text-lg font-bold text-foreground">Active Users</h3>
+                <h3 className="font-display text-lg font-bold text-foreground">7-Day Telemetry Log</h3>
                 <p className="text-xs text-muted-foreground">
-                  Latest readings reported by each farmer
+                  All historical sensor readings from the past week
                 </p>
               </div>
             </div>
             <span className="rounded-full bg-secondary/60 px-3 py-1 text-xs font-semibold text-foreground">
-              {activeUsers.length} {activeUsers.length === 1 ? "user" : "users"}
+              {uniqueUsersCount} {uniqueUsersCount === 1 ? "user" : "users"} ({tableData.length} entries)
             </span>
           </div>
 
           <div className="border-t border-border/60">
-            {activeUsers.length === 0 ? (
+            {tableData.length === 0 ? (
               <p className="p-8 text-center text-sm text-muted-foreground">
-                {loading ? "Fetching live data..." : "No active farmers registered yet."}
+                {loading ? "Fetching live data..." : "No data recorded in the last 7 days."}
               </p>
             ) : (
-             <Table>
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Farmer Node</TableHead>
+                    <TableHead>Date Logged</TableHead>
                     <TableHead className="text-right">Current (A)</TableHead>
                     <TableHead className="text-right">Voltage (V)</TableHead>
                     <TableHead className="text-right">Power (W)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeUsers.map((u) => {
+                  {tableData.map((row) => {
                     const cell = (val: number, avg: number) => (
                       <span
                         className={cn(
@@ -268,25 +278,28 @@ const AdminDashboard = () => {
                       </span>
                     );
                     return (
-                      <TableRow key={u.username}>
+                      <TableRow key={row.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary font-display text-xs font-bold text-primary-foreground">
-                              {formatInitials(u.username)}
+                              {formatInitials(row.username)}
                             </span>
                             <span className="font-semibold text-foreground">
-                              {u.username.charAt(0).toUpperCase() + u.username.slice(1)}
+                              {row.username.charAt(0).toUpperCase() + row.username.slice(1)}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {cell(u.current, systemAverages.current)}
+                        <TableCell className="text-muted-foreground font-mono text-xs">
+                          {row.date} - {row.time}
                         </TableCell>
                         <TableCell className="text-right">
-                          {cell(u.voltage, systemAverages.voltage)}
+                          {cell(row.current, systemAverages.current)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {cell(u.power, systemAverages.power)}
+                          {cell(row.voltage, systemAverages.voltage)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {cell(row.power, systemAverages.power)}
                         </TableCell>
                       </TableRow>
                     );
