@@ -246,12 +246,10 @@ const AdminDashboard = () => {
                 {loading ? "Fetching live data..." : "No active farmers registered yet."}
               </p>
             ) : (
-              <Table>
+             <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Farmer</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead>Farmer Node</TableHead>
                     <TableHead className="text-right">Current (A)</TableHead>
                     <TableHead className="text-right">Voltage (V)</TableHead>
                     <TableHead className="text-right">Power (W)</TableHead>
@@ -276,15 +274,11 @@ const AdminDashboard = () => {
                             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary font-display text-xs font-bold text-primary-foreground">
                               {formatInitials(u.username)}
                             </span>
-                            {/* Uses the username with the first letter capitalized for the Farmer Name */}
                             <span className="font-semibold text-foreground">
                               {u.username.charAt(0).toUpperCase() + u.username.slice(1)}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">@{u.username}</TableCell>
-                        {/* Uses your actual Supabase GPS column for the location! */}
-                        <TableCell className="text-muted-foreground font-mono text-xs">{u.gps || "Node Active"}</TableCell>
                         <TableCell className="text-right">
                           {cell(u.current, systemAverages.current)}
                         </TableCell>
